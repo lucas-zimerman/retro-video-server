@@ -72,3 +72,6 @@ IMPORTANT: Change the address in the iframe in views/video.ejs to contain your l
 
 
 Run `node server.js` to start the server.
+
+
+Go to the address `<your-local-server-IP>:3000` in your retro browser to open the index page.
