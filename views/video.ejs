@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Video</title>
+</head>
+<body>
+
+	<h2><%=videoInfo.title%></h2>
+
+	<% if (videoInfo.quality == '240p') { %>
+		<!-- <iframe src="http://192.168.0.175:8080" height="480"></iframe> -->
+	<% } %>
+	<% if (videoInfo.quality == '360p') { %>
+		<!-- <iframe src="http://192.168.0.175:8080" height="360"></iframe> -->
+	<% } %>
+	<% if (videoInfo.quality == '480p') { %>
+		<!-- <iframe src="http://192.168.0.175:8080" height="480"></iframe> -->
+	<% } %>
+
+
+
+	<!-- IMPORTANT: Change the following address to contain your local server's IP address! -->
+
+	<iframe src="http://192.168.0.175:8080" width="854" height="480"></iframe>
+
+</body>
+</html>

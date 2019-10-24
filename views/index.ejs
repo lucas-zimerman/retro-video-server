@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Retro-Video-Server</title>
+</head>
+<body>
+
+	<h1><a href="/">Retro Video Server</a></h1>
+
+	<% if (isVideoRunning) { %>
+		<h3>NOTE: a video is currently running already!</h3>
+		<a href="/video">Go to it now</a>
+	<% } %>
+
+	<p>YouTube search:</p>
+	<form action="/ytsearch" method="POST">
+		<input type="text" name="searchQuery"></input>
+		<input type="submit" value="Search"></input>
+	</form>
+	<br>
+	Search test (try out some hard-coded data so you don't use up your API points):
+	<form action="/ytsearchtest" method="POST">
+		<input type="submit" value="Test Search"></input>
+	</form>
+
+
+
+	<% if (results.kind != "none") {%>
+
+		<h2>Search Results</h2>
+
+		<% for (let i = 0; i < results.items.length; i++) { %>
+			<div>
+				<h3><%=results.items[i].snippet.title%></h3>
+				<form action="/spawnvlc" method="POST">
+					Video quality:<br>
+					<select name="quality">
+						<option value="240p">240p</option>
+						<option value="360p">360p</option>
+						<option value="480p">480p</option>
+					</select><br>
+					<input type="hidden" name="title" value="<%=results.items[i].snippet.title%>"></input>
+					<input type="hidden" name="videoId" value="<%=results.items[i].id.videoId%>"></input>
+					<input type="submit" value="Watch Video"></input>
+				</form>
+				<br>
+				<img src="<%=results.items[i].snippet.thumbnails.medium.url%>">
+				<p>Channel: <%=results.items[i].snippet.channelTitle%></p>
+				<p>Description: <%=results.items[i].snippet.description%></p>
+			</div>
+			<hr>
+		<% } %>
+
+	<% } %>
+
+</body>
+</html>
