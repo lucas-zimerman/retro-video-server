@@ -26,7 +26,8 @@ Smaller or larger options are of course possible, so feel free to play around wi
 that aspect of it.
 
 
-This is currently in a highly alpha stage, so I make no guarantees as to the
+This is currently in a highly alpha stage, so I make no guarantees as to whether it will
+work properly on your machine. Your mileage may vary!
 
 
 
