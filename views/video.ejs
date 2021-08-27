@@ -3,25 +3,84 @@
 <head>
 	<title>Video</title>
 </head>
-<body>
+<body  bgcolor="#202020">
+	<ul id="parent">
 
-	<h2><%=videoInfo.title%></h2>
-
-	<% if (videoInfo.quality == '240p') { %>
-		<!-- <iframe src="http://192.168.0.175:8080" height="480"></iframe> -->
+		<img src="youtube.bmp" align="left"></img>
+		<center>
+		<br/>
+		<form action="/ytsearch" method="POST">
+			<input type="text" name="searchQuery"></input>
+			<input type="submit" value="Search"></input>
+		</form>
+	</center>
+	</ul>
+	<div>
+<% if (playerType === 'VLC' ) { %>
+	<!-- VLC ActiveX integration -->
+	<object classid="clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
+		width="480" height="260" id="vlc" events="True">
+		<param name="ShowDisplay" value="True" />
+		<param name="Src" value="<%= 'http://192.168.2.2:8080/' + videoInfo.VideoId + '.mpg'%>">
+	   <param name="AutoPlay" value="True"/>
+	</object>
+<% } else if(playerType === 'iframe') { %>		
+	<!-- VLC integration -->
+	<iframe width="480" height="260">
+			<source src="http://192.168.2.2:8080/demo.mpg">
+		</video>
+<% } else { %>
+	<!-- Windows Media Player integration -->
+	<object type="video/x-ms-asf"  classid="CLSID:05589FA1-C356-11CE-BF01-00AA0055595A">
+		<param name="Filename" value="<%= 'http://192.168.2.2:8080/' + videoInfo.VideoId + '.mpg'%>">
+		<param name="autostart" value="1">
+		<param name="autosize" value="0">
+    	<param name="ShowTracker" value="0"/>
+		<embed width="100%" height="100%"    autostart="true" showcontrols="true" pluginspage="http://www.microsoft.com/Windows/MediaPlayer/"></embed>
+	  </object>
+	  
+<% } %>
+		<br>
+		<% if (!videoInfo.CommentEnabled) { %>
+			<font Color="#FF0000" font-size="64px">•</font>
+			<font Color="#ffffff">live</font>
+		<% } %>
+		<div style="float: left"><font Color="#666666" font-size=24px><%=videoInfo.Name%></font></div>
+		<div style="margin: 0 auto; width: 100px;"><font Color="#666666"><%=videoInfo.PublishedDate%></font></div>
+	</div>
+	<br>
+	
+	<div style="float: left"><font Color="#ffffff"><%=videoInfo.ChannelName%></font></div>
+	<div style="margin: 0 auto; width: 350px;">
+		<img src="thumbup.bmp">
+		<font Color="#ffffff"><%=videoInfo.Likes%></font>
+		
+		<img src="thumbdown.bmp">
+		<font Color="#ffffff"><%=videoInfo.Dislikes%></font>
+		<img src="share.bmp">
+		<font Color="#ffffff">SHARE</font>
+		<img src="save.bmp">
+		<font Color="#ffffff">SAVE</font>
+		<img src="info.bmp">
+	</div>
+	<br>
+	<font Color="#666666" font-size=24px><%=videoInfo.Description%></font>
+	<br><br>
+	<hr>
+	<% if (!videoInfo.CommentEnabled) { %>
+	<% } else { %>
+	<% for (let i = 0; i < videoInfo.Comments.length; i++) { %>
+		<div>
+			<img src="<%=videoInfo.Comments[i].snippet.topLevelComment.snippet.authorProfileImageUrl%>" height="30" width="30" align="left">
+			<font Color="#ffffff" style="margin-left:0.5em"><%=videoInfo.Comments[i].snippet.topLevelComment.snippet.authorDisplayName%></font>
+			<br>
+			<font Color="#666666" style="margin-left:0.5em"><%=videoInfo.Comments[i].snippet.topLevelComment.snippet.textDisplay%></font>
+			<br>
+			<font Color="#666666"><%=videoInfo.Comments[i].snippet.topLevelComment.snippet.likeCount%> likes</font>
+			<hr>
+		</div>
+		<br><br>		
 	<% } %>
-	<% if (videoInfo.quality == '360p') { %>
-		<!-- <iframe src="http://192.168.0.175:8080" height="360"></iframe> -->
 	<% } %>
-	<% if (videoInfo.quality == '480p') { %>
-		<!-- <iframe src="http://192.168.0.175:8080" height="480"></iframe> -->
-	<% } %>
-
-
-
-	<!-- IMPORTANT: Change the following address to contain your local server's IP address! -->
-
-	<iframe src="http://192.168.0.175:8080" width="854" height="480"></iframe>
-
 </body>
 </html>

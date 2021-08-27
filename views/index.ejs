@@ -3,52 +3,44 @@
 <head>
 	<title>Retro-Video-Server</title>
 </head>
-<body>
-
-	<h1><a href="/">Retro Video Server</a></h1>
-
-	<% if (isVideoRunning) { %>
-		<h3>NOTE: a video is currently running already!</h3>
-		<a href="/video">Go to it now</a>
-	<% } %>
-
-	<p>YouTube search:</p>
-	<form action="/ytsearch" method="POST">
+<body bgcolor="#202020">
+	<form action="/ytsearch" method="POST" float="center">
 		<input type="text" name="searchQuery"></input>
 		<input type="submit" value="Search"></input>
 	</form>
 	<br>
-	Search test (try out some hard-coded data so you don't use up your API points):
-	<form action="/ytsearchtest" method="POST">
-		<input type="submit" value="Test Search"></input>
-	</form>
 
+	<% if (isVideoRunning) { %>
+		<h3 Color="#ffffff" >NOTE: a video is currently running already!</h3>
+		<a href="/video">Go to it now</a>
+	<% } %>
 
 
 	<% if (results.kind != "none") {%>
 
-		<h2>Search Results</h2>
+		<h2><font Color="#ffffff">Search Results</font></h2>
 
 		<% for (let i = 0; i < results.items.length; i++) { %>
 			<div>
-				<h3><%=results.items[i].snippet.title%></h3>
 				<form action="/spawnvlc" method="POST">
-					Video quality:<br>
+					<font Color="#666666">Video quality: </font>
 					<select name="quality">
+						<option value="c64">c64</option>
+						<option value="144p">144p</option>
 						<option value="240p">240p</option>
 						<option value="360p">360p</option>
 						<option value="480p">480p</option>
 					</select><br>
 					<input type="hidden" name="title" value="<%=results.items[i].snippet.title%>"></input>
 					<input type="hidden" name="videoId" value="<%=results.items[i].id.videoId%>"></input>
-					<input type="submit" value="Watch Video"></input>
+					<input type="image" src="<%=results.items[i].snippet.thumbnails.medium.url%>" align="left">
 				</form>
 				<br>
-				<img src="<%=results.items[i].snippet.thumbnails.medium.url%>">
-				<p>Channel: <%=results.items[i].snippet.channelTitle%></p>
-				<p>Description: <%=results.items[i].snippet.description%></p>
+				<p><b><font Color="#ffffff"><%=results.items[i].snippet.title%></font></b></p>
+				<p><font Color="#666666">Description: <%=results.items[i].snippet.description%></font></p>
+				<p><font Color="#666666">Channel: <%=results.items[i].snippet.channelTitle%></font></p>
 			</div>
-			<hr>
+			<hr><br>
 		<% } %>
 
 	<% } %>

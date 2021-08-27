@@ -5,15 +5,19 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node  server.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@freetube/yt-comment-scraper": "^6.0.0",
+    "@google-cloud/local-auth": "^1.0.1",
     "body-parser": "^1.19.0",
     "dotenv": "^8.2.0",
     "ejs": "^2.7.1",
     "express": "^4.17.1",
-    "youtube-api-v3-search": "^1.2.1"
+    "googleapis": "^84.0.0",
+    "youtube-api-v3-search": "^1.2.1",
+    "yt-comment-scraper": "^5.2.0"
   }
 }

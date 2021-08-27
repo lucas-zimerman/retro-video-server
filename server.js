@@ -7,11 +7,26 @@ const bodyParser = require('body-parser');
 
 
 const searchYoutube = require('youtube-api-v3-search');
+const querystring = require('querystring');
+const fs = require('fs');
 
 require('dotenv').config();
 
 
 const { spawn } = require('child_process');
+
+const {google, videointelligence_v1p2beta1} = require('googleapis');
+const youtube = google.youtube(
+{
+	version:'v3', auth: process.env.YOUTUBE_API_KEY
+});
+const {authenticate} = require('@google-cloud/local-auth');
+var path = require('path');
+
+const { Console } = require('console');
+const { auth } = require('googleapis/build/src/apis/abusiveexperiencereport');
+
+
 
 
 
@@ -32,9 +47,7 @@ const testResult = {"kind":"youtube#searchListResponse","etag":"\"j6xRRd8dTPVVpt
 let vlcChild = null;
 
 let globalVideoQuality = '';
-let globalVideoTitle = '';
-let globalVideoId = '';
-
+let VideoDataCache = []
 
 
 killVlcChild = () =>
@@ -43,11 +56,131 @@ killVlcChild = () =>
 	{
 		//destroy if already existing
 		//vlcChild.kill();
-		process.kill(-vlcChild.pid);
+		const args = [
+			"/IM",
+			"vlc.exe"
+		];
+		spawn('taskkill', args, {shell: true, detached: true});
 		console.log("NODE: killed existing VLC process");
 	}
 }
 
+
+function GetCachedVideo(name)
+{
+	if (VideoDataCache.length == 0)
+	{
+		return null;
+	}
+	return VideoDataCache.find(element => element.VideoId ===  name);
+}
+
+function TryUpdateCachedVideo(id, comments)
+{
+	if (VideoDataCache.length > 0)
+	{
+		VideoDataCache.find(element => element.VideoId ===  id).Comments = comments;
+	}
+}
+
+function GetCachedComment(id)
+{
+	if (VideoDataCache.length > 0)
+	{
+		return VideoDataCache.find(element => element.VideoId ===  id).Comments;
+	}
+	return null;
+}
+
+function GetMockVideoInfo()
+{
+	return  { Likes: 12, Dislikes: 12, CommentCount: 0, CommentEnabled: false, Comments: [], Description: "Sample video", ChannelName:"Sample Channel", PublishedDate: "01-01-2020", VideoId:"demo"};
+}
+
+/**
+ * 
+ * @param {Request} req 
+ * @returns bool
+ */
+function IsRequestContent(req)
+{
+	if (req.params.videoId && req.params.videoId.includes(".bmp"))
+	{
+		return true;		
+	}
+	return false;
+}
+
+/**
+ * 
+ * @param {Request} req 
+ * @param {Response} res 
+ */
+function RedirectToImage(req, res)
+{
+	var readStream = fs.createReadStream('public/' + req.params.videoId);
+	readStream.pipe(res);
+}
+
+/**
+ * 
+ * @param {string} name 
+ * @param {string} id 
+ * @returns
+ */
+async function AddCachedVideo(name, id)
+{
+	var newItem = { VideoId: id, Name: name, CommentEnabled: true, CommentCount: -1, Comments: [], Likes: -1, Dislikes: -1, PublishedDate: '', ViewCount: -1, ChannelName: '', Description: ''};
+	try
+	{
+		if (name === ":)demo")
+		{
+			return  GetMockVideoInfo();
+		}
+		else
+		{
+			VideoDataCache.push(newItem);
+			var extraData = await youtube.videos.list(
+			{
+				"part": [
+				"snippet,statistics"
+				],
+				"i": 15,
+				"moderationStatus": "published",
+				"order": "relevance",
+				"id": id
+			});	
+			newItem.Likes = extraData.data.items[0].statistics.likeCount;
+			newItem.Dislikes = extraData.data.items[0].statistics.dislikeCount;
+			newItem.CommentCount = extraData.data.items[0].statistics.commentCount;
+			if (name === "unknown")
+			{
+				extraData.Name = extraData.data.items[0].snippet.title;
+			}
+			else
+			{
+				extraData.Name = name;
+			}
+			newItem.Description = extraData.data.items[0].snippet.description;
+			newItem.ChannelName = extraData.data.items[0].snippet.channelTitle;
+			var date = Date.parse(extraData.data.items[0].snippet.publishedAt);
+			let ye = new Intl.DateTimeFormat('en', { year: 'numeric' }).format(date);
+			let mo = new Intl.DateTimeFormat('en', { month: 'short' }).format(date);
+			let da = new Intl.DateTimeFormat('en', { day: '2-digit' }).format(date);
+			newItem.PublishedDate = `${da}-${mo}-${ye}`;
+		}
+	}
+	catch (error)
+	{
+		Console.log(error);
+	}
+	return newItem;
+}
+
+function HasCommentsDisabled(error)
+{
+	return error.message.includes('disabled comments');
+}
 
 
 
@@ -91,46 +224,55 @@ app.post('/ytsearch', (req, res)=>
 	});
 });
 
-
-
-
-app.post('/spawnvlc', (req, res)=>
+/**
+ * 
+ * @param {string} videoId 
+ * @param {string} videoName 
+ * @param {string} quality (420p, 360p, 240p, 144p, c64) 
+ * @returns 
+ */
+async function SpawnEncoder(videoId, videoName, quality)
 {
-	//spawns a vlc process for the video ID given
-	//destroys all previous processes!
 	killVlcChild();
-	//else
-	//{
-	
-		//Now spawn a new one:
-		//vlcChild = spawn('vlc', ["-vvv https://www.youtube.com/watch?v=" + req.params.id, "--sout '#transcode{height=240,vcodec=mp1v,acodec=mpga,vb=1024,ab=192}:standard{access=http{mime=video/mpeg},mux=mpeg1}'"], {shell: false});
 		const args = [
 			"-vvv",
-			"https://www.youtube.com/watch?v=" + req.body.videoId,
+			"https://www.youtube.com/watch?v=" + videoId,
+			"--loop",
+			"--image-duration=-1",
 			"--sout",
-			""
+			"",
 		];
-
-		switch (req.body.quality)
+		if ( videoId === 'demo')
+		{
+			args[1] = "./sample.mp4";
+			videoName = ":)demo";
+		}
+		//mux selection information can be found here: https://www.videolan.org/streaming-features.html
+		switch (quality)
 		{
 			case '480p':
-				args[3] = "\"#transcode{height=480,vcodec=mp1v,acodec=mpga,vb=4096,ab=192}:standard{access=http{mime=video/mpeg},mux=mpeg1}\""
+				args[5] = "\"#transcode{height=480,vcodec=mp1v,acodec=mpga,vb=4096,ab=192,fps=24}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
 				break;
 			case '360p':
-				args[3] = "\"#transcode{height=360,vcodec=mp1v,acodec=mpga,vb=2048,ab=192}:standard{access=http{mime=video/mpeg},mux=mpeg1}\""
+				args[5] = "\"#transcode{height=360,vcodec=mp1v,acodec=mpga,vb=2048,ab=192,fps=24}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
 				break;
 			case '240p':
-				args[3] = "\"#transcode{height=240,vcodec=mp1v,acodec=mpga,vb=1024,ab=192}:standard{access=http{mime=video/mpeg},mux=mpeg1}\"";
+				args[5] = "\"#transcode{height=240,vcodec=mp1v,acodec=mpga,vb=1024,ab=192,fps=24}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
 				break;
-			default:
-				res.send("Error: unknown quality selection!");
-				res.status(200).end();
-		}
-		
+			case '144p':
+				args[5] = "\"#transcode{height=144,vcodec=mp1v,acodec=mpga,vb=1024,ab=192,fps=24}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
+				break;
+			case 'c64p':
+				args[5] = "\"#transcode{height=144,vcodec=mp1v,acodec=mpga,vb=1024,ab=192,fps=12}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
+				break;
+				default:
+				console.log("Quality not set, using 240p.");
+				args[5] = "\"#transcode{height=240,vcodec=mp1v,acodec=mpga,vb=1024,ab=192,fps=25}:standard{access=http{mime=video/mpeg},mux=mpeg1,dst=:8080/" + videoId + ".mpg}\"";
+				break;
+		}		
 		console.log(args);
 
-		vlcChild = spawn('vlc', args, {shell: true, detached: true});
-
+		vlcChild = spawn('VLC', args, {shell: true, detached: true});
 
 		vlcChild.stdout.on('data', (data) => {
 		  console.log(`stdout: ${data}`);
@@ -145,34 +287,77 @@ app.post('/spawnvlc', (req, res)=>
 		  vlcChild = null;
 		});
 
-		//vlcChild.kill('SIGKILL');
+}
 
 
-		globalVideoQuality = req.body.quality;
-		globalVideoTitle = req.body.title;
-		globalVideoId = req.body.videoId;
-		
-
-		res.redirect('/video');
-
-		//res.redirect('http://192.168.0.175:8080');
-		
-	//}
-});
-
-
-app.get('/video', (req, res) =>
+app.post('/spawnvlc', async (req, res)=>
 {
-	res.render('video.ejs', {videoInfo:
-	{
-		quality: globalVideoQuality,
-		title: globalVideoTitle,
-		id: globalVideoId
-	}});
+		res.redirect('/watch/?v=' + req.body.videoId);
 });
 
 
-//app.use(express.static('./public'));
+app.get('/watch', async (req, res) =>
+{
+    try {
+		if (IsRequestContent(req))
+		{
+			RedirectToImage(req, res);
+			return;
+		}
+		var quality = '240p';		
+		if (req.query.quality)
+		{
+			quality = req.query.quality;
+		}
+		var playerType = 'WMP';
+		if (req.query.player)
+		{
+			playerType = req.query.player;
+		}
+
+		var videoInfo = GetCachedVideo(req.query.v);
+		if (!videoInfo)
+		{
+			videoinfo = await AddCachedVideo("unknown", req.query.v);
+		}
+		await SpawnEncoder(req.query.v, null, quality);
+		if (videoInfo.Comments.length > 0 || videoInfo.CommentEnabled == false)
+		{}
+		else
+		{
+			try{
+				var commentsResponse = await youtube.commentThreads.list({
+					"part": [
+					"snippet"
+					],
+					"maxResults": 15,
+					"moderationStatus": "published",
+					"order": "relevance",
+					"videoId": req.query.v
+				});	
+				videoInfo.Comments = commentsResponse.data.items;
+			}
+			catch (commentError)
+			{
+				if (HasCommentsDisabled(commentError))
+				{
+					videoInfo.CommentEnabled = false;
+				}
+				else
+				{
+					throw commentError;
+				}
+			}
+		}
+		res.render('video.ejs', {videoInfo: videoInfo, playerType: playerType, quality: quality});	
+	} catch (error) {
+		Console.log(error);	
+	}
+	
+});
+
+
+app.use(express.static('./public'));
 
 app.listen(port, function()
 {
